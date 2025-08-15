@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login - Chat Application</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .login-container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            animation: slideIn 0.6s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .login-header h1 {
+            color: white;
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .login-header p {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: white;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.4);
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .login-btn:active {
+            transform: translateY(0);
+        }
+
+        .error-message {
+            background: rgba(255, 107, 107, 0.2);
+            border: 1px solid rgba(255, 107, 107, 0.3);
+            color: #ff6b6b;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+            animation: shake 0.5s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        .remember-me {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .remember-me input[type="checkbox"] {
+            width: auto;
+            margin-right: 8px;
+        }
+
+        .remember-me label {
+            margin-bottom: 0;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .demo-credentials {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .demo-credentials h3 {
+            color: white;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .demo-credentials p {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 12px;
+            margin: 2px 0;
+        }
+
+        @media (max-width: 480px) {
+            .login-container {
+                padding: 30px 20px;
+                margin: 10px;
+            }
+
+            .login-header h1 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <h1>Admin Login</h1>
+            <p>Access your chat application dashboard</p>
+        </div>
+
+        <div class="error-message" id="errorMessage">
+            Invalid username or password. Please try again.
+        </div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" placeholder="Enter your username" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="Enter your password" required>
+            </div>
+
+            <div class="remember-me">
+                <input type="checkbox" id="rememberMe" name="rememberMe">
+                <label for="rememberMe">Remember me</label>
+            </div>
+
+            <button type="submit" class="login-btn">Sign In</button>
+        </form>
+
+        <div class="demo-credentials">
+            <h3>Login Credentials</h3>
+            <p><strong>Username:</strong> DnDfabrics</p>
+            <p><strong>Password:</strong> Wilson@1587</p>
+        </div>
+    </div>
+
+    <script>
+        class AuthManager {
+            constructor() {
+                this.sessionKey = 'chatapp_admin_session';
+                this.rememberKey = 'chatapp_remember_me';
+                this.init();
+            }
+
+            init() {
+                // Check if already logged in
+                if (this.isAuthenticated()) {
+                    this.redirectToAdmin();
+                }
+
+                // Check for remembered credentials
+                this.loadRememberedCredentials();
+
+                // Bind form submission
+                document.getElementById('loginForm').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.handleLogin();
+                });
+            }
+
+            isAuthenticated() {
+                const session = localStorage.getItem(this.sessionKey);
+                if (!session) return false;
+
+                try {
+                    const sessionData = JSON.parse(session);
+                    const now = Date.now();
+                    
+                    // Check if session is still valid (24 hours)
+                    if (now - sessionData.timestamp > 24 * 60 * 60 * 1000) {
+                        this.logout();
+                        return false;
+                    }
+
+                    return sessionData.authenticated === true;
+                } catch (error) {
+                    this.logout();
+                    return false;
+                }
+            }
+
+            handleLogin() {
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                const rememberMe = document.getElementById('rememberMe').checked;
+
+                // Simple authentication (in production, this should be server-side)
+                if (this.validateCredentials(username, password)) {
+                    this.createSession(username, rememberMe);
+                    this.redirectToAdmin();
+                } else {
+                    this.showError();
+                }
+            }
+
+            validateCredentials(username, password) {
+                // Updated credentials - in production, validate against server
+                const validCredentials = [
+                    { username: 'DnDfabrics', password: 'Wilson@1587' },
+                    { username: 'admin', password: 'admin123' },
+                    { username: 'demo', password: 'demo123' }
+                ];
+
+                return validCredentials.some(cred => 
+                    cred.username === username && cred.password === password
+                );
+            }
+
+            createSession(username, rememberMe) {
+                const sessionData = {
+                    authenticated: true,
+                    username: username,
+                    timestamp: Date.now(),
+                    loginTime: new Date().toISOString()
+                };
+
+                localStorage.setItem(this.sessionKey, JSON.stringify(sessionData));
+
+                if (rememberMe) {
+                    localStorage.setItem(this.rememberKey, JSON.stringify({
+                        username: username,
+                        rememberMe: true
+                    }));
+                } else {
+                    localStorage.removeItem(this.rememberKey);
+                }
+            }
+
+            loadRememberedCredentials() {
+                const remembered = localStorage.getItem(this.rememberKey);
+                if (remembered) {
+                    try {
+                        const data = JSON.parse(remembered);
+                        if (data.rememberMe) {
+                            document.getElementById('username').value = data.username;
+                            document.getElementById('rememberMe').checked = true;
+                        }
+                    } catch (error) {
+                        localStorage.removeItem(this.rememberKey);
+                    }
+                }
+            }
+
+            showError() {
+                const errorElement = document.getElementById('errorMessage');
+                errorElement.style.display = 'block';
+                
+                // Hide error after 5 seconds
+                setTimeout(() => {
+                    errorElement.style.display = 'none';
+                }, 5000);
+
+                // Clear password field
+                document.getElementById('password').value = '';
+                document.getElementById('password').focus();
+            }
+
+            logout() {
+                localStorage.removeItem(this.sessionKey);
+                // Keep remember me data if it exists
+            }
+
+            redirectToAdmin() {
+                window.location.href = 'admin.html';
+            }
+        }
+
+        // Initialize authentication manager
+        const authManager = new AuthManager();
+
+        // Add some visual feedback for form interactions
+        document.addEventListener('DOMContentLoaded', function() {
+            const inputs = document.querySelectorAll('input');
+            
+            inputs.forEach(input => {
+                input.addEventListener('focus', function() {
+                    this.parentElement.style.transform = 'translateY(-2px)';
+                });
+                
+                input.addEventListener('blur', function() {
+                    this.parentElement.style.transform = 'translateY(0)';
+                });
+            });
+        });
+    </script>
+</body>
+</html>

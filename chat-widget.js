@@ -156,34 +156,84 @@
         }
 
         sendAnalytics(eventType, data) {
-        console.log('Analytics Event:', eventType, data);
-        
-        // Store analytics events in localStorage for admin dashboard
-        const analyticsEvent = {
-            sessionId: this.sessionId,
-            eventType: eventType,
-            data: data,
-            timestamp: Date.now()
-        };
-        
-        // Get existing events or create new array
-        const existingEvents = JSON.parse(localStorage.getItem('chatAnalytics_events') || '[]');
-        existingEvents.push(analyticsEvent);
-        
-        // Store updated events
-        localStorage.setItem('chatAnalytics_events', JSON.stringify(existingEvents));
-        
-        // Also send to external endpoint if configured
-        if (window.chatAnalyticsEndpoint) {
-            fetch(window.chatAnalyticsEndpoint, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(analyticsEvent)
-            }).catch(err => console.log('Analytics send failed:', err));
+            const analyticsEvent = {
+                eventType: eventType,
+                data: data,
+                timestamp: new Date().toISOString(),
+                sessionId: this.sessionId
+            };
+
+            // Store in localStorage for admin dashboard (fallback)
+            const existingEvents = JSON.parse(localStorage.getItem('chatAnalytics') || '[]');
+            existingEvents.push(analyticsEvent);
+            localStorage.setItem('chatAnalytics', JSON.stringify(existingEvents));
+
+            // Send to database API endpoint
+            this.sendToDatabase(eventType, data);
+
+            console.log('Analytics Event:', analyticsEvent);
         }
-    }
+
+        async sendToDatabase(eventType, data) {
+            try {
+                const apiEndpoint = window.chatAnalyticsEndpoint || '/api/analytics';
+                
+                let apiData = {};
+                let apiType = '';
+
+                // Map event types to database structure
+                switch (eventType) {
+                    case 'session_start':
+                    case 'device_info':
+                    case 'location':
+                    case 'traffic_source':
+                    case 'page_view':
+                    case 'session_update':
+                        apiType = 'visitor';
+                        apiData = {
+                            sessionId: this.sessionId,
+                            ...data,
+                            lastSeen: new Date().toISOString()
+                        };
+                        break;
+                    
+                    case 'chat_message':
+                        apiType = 'message';
+                        apiData = {
+                            sessionId: this.sessionId,
+                            ...data
+                        };
+                        break;
+                    
+                    default:
+                        apiType = 'session';
+                        apiData = {
+                            sessionId: this.sessionId,
+                            ...data
+                        };
+                }
+
+                const response = await fetch(apiEndpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        type: apiType,
+                        data: apiData
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                console.log('Data sent to database:', result);
+            } catch (error) {
+                console.log('Database API not available, using localStorage fallback:', error);
+            }
+        }
     }
 
     // Chat Widget Class

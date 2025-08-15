@@ -317,11 +317,118 @@
     </div>
 
     <script>
+        // Authentication Manager
+        class AdminAuthManager {
+            constructor() {
+                this.sessionKey = 'chatapp_admin_session';
+                this.checkAuthentication();
+            }
+
+            checkAuthentication() {
+                const session = localStorage.getItem(this.sessionKey);
+                if (!session) {
+                    this.redirectToLogin();
+                    return false;
+                }
+
+                try {
+                    const sessionData = JSON.parse(session);
+                    const now = Date.now();
+                    
+                    // Check if session is still valid (24 hours)
+                    if (now - sessionData.timestamp > 24 * 60 * 60 * 1000) {
+                        this.logout();
+                        return false;
+                    }
+
+                    if (sessionData.authenticated !== true) {
+                        this.redirectToLogin();
+                        return false;
+                    }
+
+                    // Update last activity
+                    sessionData.lastActivity = now;
+                    localStorage.setItem(this.sessionKey, JSON.stringify(sessionData));
+                    
+                    this.setupLogoutButton(sessionData.username);
+                    return true;
+                } catch (error) {
+                    this.logout();
+                    return false;
+                }
+            }
+
+            setupLogoutButton(username) {
+                // Add logout button to header
+                const header = document.querySelector('.header');
+                if (header && !document.getElementById('logoutBtn')) {
+                    const logoutContainer = document.createElement('div');
+                    logoutContainer.style.cssText = `
+                        position: absolute;
+                        top: 20px;
+                        right: 20px;
+                        display: flex;
+                        align-items: center;
+                        gap: 15px;
+                    `;
+                    
+                    const welcomeText = document.createElement('span');
+                    welcomeText.style.cssText = 'color: rgba(255, 255, 255, 0.9); font-size: 14px;';
+                    welcomeText.textContent = `Welcome, ${username}`;
+                    
+                    const logoutBtn = document.createElement('button');
+                    logoutBtn.id = 'logoutBtn';
+                    logoutBtn.textContent = 'Logout';
+                    logoutBtn.style.cssText = `
+                        background: rgba(255, 255, 255, 0.2);
+                        border: 1px solid rgba(255, 255, 255, 0.3);
+                        color: white;
+                        padding: 8px 16px;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        font-size: 14px;
+                        transition: all 0.3s ease;
+                    `;
+                    
+                    logoutBtn.addEventListener('mouseover', () => {
+                        logoutBtn.style.background = 'rgba(255, 255, 255, 0.3)';
+                        logoutBtn.style.transform = 'translateY(-1px)';
+                    });
+                    
+                    logoutBtn.addEventListener('mouseout', () => {
+                        logoutBtn.style.background = 'rgba(255, 255, 255, 0.2)';
+                        logoutBtn.style.transform = 'translateY(0)';
+                    });
+                    
+                    logoutBtn.addEventListener('click', () => this.logout());
+                    
+                    logoutContainer.appendChild(welcomeText);
+                    logoutContainer.appendChild(logoutBtn);
+                    
+                    header.style.position = 'relative';
+                    header.appendChild(logoutContainer);
+                }
+            }
+
+            logout() {
+                localStorage.removeItem(this.sessionKey);
+                this.redirectToLogin();
+            }
+
+            redirectToLogin() {
+                window.location.href = 'login.html';
+            }
+        }
+
+        // Initialize authentication check
+        const authManager = new AdminAuthManager();
+
         // Real-time analytics data storage
         class AnalyticsManager {
             constructor() {
                 this.visitors = new Map();
                 this.chatMessages = [];
+                this.apiEndpoint = '/api/analytics';
                 this.init();
             }
 
@@ -330,20 +437,52 @@
                 this.startDataCollection();
             }
 
-            loadStoredData() {
-                // Load existing analytics data from localStorage
-                const storedVisitors = localStorage.getItem('chatAnalytics_visitors');
-                const storedMessages = localStorage.getItem('chatAnalytics_messages');
-                
-                if (storedVisitors) {
-                    const visitorsData = JSON.parse(storedVisitors);
-                    visitorsData.forEach(visitor => {
-                        this.visitors.set(visitor.sessionId, visitor);
-                    });
+            async loadStoredData() {
+                try {
+                    // Try to load from API first
+                    await this.loadFromAPI();
+                } catch (error) {
+                    console.log('API not available, loading from localStorage:', error);
+                    // Fallback to localStorage
+                    const storedVisitors = localStorage.getItem('chatAnalytics_visitors');
+                    const storedMessages = localStorage.getItem('chatAnalytics_messages');
+                    
+                    if (storedVisitors) {
+                        const visitorsData = JSON.parse(storedVisitors);
+                        visitorsData.forEach(visitor => {
+                            this.visitors.set(visitor.sessionId, visitor);
+                        });
+                    }
+                    
+                    if (storedMessages) {
+                        this.chatMessages = JSON.parse(storedMessages);
+                    }
+                }
+            }
+
+            async loadFromAPI() {
+                const response = await fetch(this.apiEndpoint);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 
-                if (storedMessages) {
-                    this.chatMessages = JSON.parse(storedMessages);
+                const result = await response.json();
+                if (result.success && result.data) {
+                    // Clear existing data
+                    this.visitors.clear();
+                    this.chatMessages = [];
+                    
+                    // Load visitors
+                    if (result.data.visitors) {
+                        result.data.visitors.forEach(visitor => {
+                            this.visitors.set(visitor.sessionId, visitor);
+                        });
+                    }
+                    
+                    // Load chat messages
+                    if (result.data.chatMessages) {
+                        this.chatMessages = result.data.chatMessages;
+                    }
                 }
             }
 
@@ -355,19 +494,23 @@
                     }
                 });
 
-                // Check for new analytics data every second
+                // Check for new analytics data every 5 seconds
                 setInterval(() => {
                     this.checkForNewData();
-                }, 1000);
+                }, 5000);
             }
 
-            checkForNewData() {
-                // Check localStorage for new analytics events
-                const events = localStorage.getItem('chatAnalytics_events');
-                if (events) {
-                    const eventList = JSON.parse(events);
-                    eventList.forEach(event => this.processAnalyticsEvent(event));
-                    localStorage.removeItem('chatAnalytics_events'); // Clear processed events
+            async checkForNewData() {
+                try {
+                    await this.loadFromAPI();
+                } catch (error) {
+                    // Fallback to localStorage check
+                    const events = localStorage.getItem('chatAnalytics_events');
+                    if (events) {
+                        const eventList = JSON.parse(events);
+                        eventList.forEach(event => this.processAnalyticsEvent(event));
+                        localStorage.removeItem('chatAnalytics_events'); // Clear processed events
+                    }
                 }
             }
 
